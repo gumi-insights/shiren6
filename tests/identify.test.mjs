@@ -320,6 +320,76 @@ test('priceChips clears the queried side', () => {
   assert.ok(buys.includes(40));
 });
 
+test('changing 壺 capacity clears the buy price and lists that capacity', () => {
+  let state = reduceFilter(initialFilter(), { type: 'selectCategory', category: '壺' });
+  state = reduceFilter(state, { type: 'setBuy', buy: 1100 });
+  assert.equal(queryMatches(catalog, state).length, 5);
+  state = reduceFilter(state, { type: 'setParameter', value: 2 });
+  assert.deepEqual(state.price, { kind: 'any' });
+  assert.deepEqual(state.parameter, { kind: 'capacity', value: 2 });
+  assert.deepEqual(
+    queryMatches(catalog, state).map((match) => match.name),
+    ['おはらいの壺', '強化の壺', '弱化の壺', '呪いの壺', '笑いの壺', '倉庫の壺', '底抜けの壺'],
+  );
+});
+
+test('changing 壺 capacity clears a buy price that would still match', () => {
+  let state = reduceFilter(initialFilter(), { type: 'selectCategory', category: '壺' });
+  state = reduceFilter(state, { type: 'setBuy', buy: 1100 });
+  state = reduceFilter(state, { type: 'setParameter', value: 3 });
+  assert.deepEqual(state.price, { kind: 'any' });
+  assert.deepEqual(
+    queryMatches(catalog, state).map((match) => match.name),
+    [
+      'おはらいの壺',
+      'ただの壺',
+      'トドの壺',
+      'やりすごの壺',
+      '割れない壺',
+      '換金の壺',
+      '強化の壺',
+      '合成の壺',
+      '識別の壺',
+      '弱化の壺',
+      '手封じの壺',
+      '呪いの壺',
+      '笑いの壺',
+      '水鉄砲の壺',
+      '倉庫の壺',
+      '底抜けの壺',
+      '背中の壺',
+      '変化の壺',
+      '保存の壺',
+      '魔物の壺',
+    ],
+  );
+});
+
+test('changing 杖 uses clears the sell price and lists that use count', () => {
+  let state = reduceFilter(initialFilter(), { type: 'selectCategory', category: '杖' });
+  state = reduceFilter(state, { type: 'setSell', sell: 360 });
+  assert.deepEqual(queryMatches(catalog, state).map((match) => match.name), ['導きの杖']);
+  state = reduceFilter(state, { type: 'setParameter', value: 7 });
+  assert.deepEqual(state.price, { kind: 'any' });
+  assert.deepEqual(state.parameter, { kind: 'uses', value: 7 });
+  assert.deepEqual(
+    queryMatches(catalog, state).map((match) => match.name),
+    ['ただの杖', '場所替えの杖', '吹き飛ばの杖', '痛み分けの杖', '転ばぬ先の杖', '飛びつきの杖', '魔道の杖'],
+  );
+});
+
+test('selecting the current capacity keeps the buy price', () => {
+  let state = reduceFilter(initialFilter(), { type: 'selectCategory', category: '壺' });
+  state = reduceFilter(state, { type: 'setParameter', value: 3 });
+  state = reduceFilter(state, { type: 'setBuy', buy: 1100 });
+  state = reduceFilter(state, { type: 'setParameter', value: 3 });
+  assert.deepEqual(state.price, { kind: 'buy', value: 1100 });
+  assert.deepEqual(
+    queryMatches(catalog, state).map((match) => match.name),
+    ['ただの壺', 'やりすごの壺', '識別の壺', '変化の壺', '保存の壺'],
+  );
+});
+
 test('priceChips sell list ignores active buy', () => {
   const withBuy = fixedFilter('草', {
     includedStatusIds: new Set(['normal']),

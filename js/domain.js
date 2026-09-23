@@ -56,9 +56,11 @@ export function reduceFilter(state, action) {
     }
     case 'setParameter': {
       if (state.parameter.kind === 'none') return state;
+      if (Object.is(state.parameter.value, action.value)) return state;
       return {
         ...state,
         parameter: { ...state.parameter, value: action.value },
+        price: { kind: 'any' },
       };
     }
     case 'setBuy':

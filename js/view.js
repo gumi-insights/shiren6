@@ -549,15 +549,14 @@ function mountReel(root, side) {
     'wheel',
     (event) => {
       event.preventDefault();
-      wheelAccum += event.deltaY;
-      while (wheelAccum >= 48) {
-        wheelAccum -= 48;
-        commit(index + 1);
-      }
-      while (wheelAccum <= -48) {
-        wheelAccum += 48;
-        commit(index - 1);
-      }
+      let delta = event.deltaY;
+      if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) delta *= ROW;
+      else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) delta *= ROW * 3;
+      wheelAccum += delta;
+      if (Math.abs(wheelAccum) < ROW) return;
+      const dir = Math.sign(wheelAccum);
+      wheelAccum = 0;
+      commit(index + dir);
     },
     { passive: false },
   );

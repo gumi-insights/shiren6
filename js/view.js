@@ -187,27 +187,31 @@ function renderStatusBar(root, filter, dispatch) {
   }
 }
 
-function renderParamChips(root, catalog, filter, dispatch) {
-  clearChildren(root);
-  root.hidden = true;
-  if (filter.category !== '壺' && filter.category !== '杖') return;
-  root.hidden = false;
-  const legend = document.createElement('div');
-  legend.className = 'control-label';
-  legend.textContent = filter.category === '壺' ? '容量' : '残り回数';
-  root.append(legend);
-  const row = document.createElement('div');
-  row.className = 'chip-row';
+function includedStatusLabel(filter) {
+  const included = statusChoices(filter).filter((choice) => choice.included);
+  if (included.length === 0) return 'なし';
+  return included.map((choice) => choice.label).join('・');
+}
+
+function renderParamChips(panel, catalog, filter, dispatch) {
+  const chips = panel.querySelector('[data-role="params-chips"]');
+  const title = panel.querySelector('[data-role="params-title"]');
+  const value = panel.querySelector('[data-role="params-value"]');
+  clearChildren(chips);
+  const active = filter.category === '壺' || filter.category === '杖';
+  panel.hidden = !active;
+  if (!active) return;
+  title.textContent = filter.category === '壺' ? '容量' : '残り回数';
   const selected = filter.parameter.value;
+  value.textContent = selected === null ? '指定なし' : String(selected);
   const none = chipButton('指定なし', { pressed: selected === null });
   none.addEventListener('click', () => dispatch({ type: 'setParameter', value: null }));
-  row.append(none);
+  chips.append(none);
   for (const n of parameterOptions(catalog, filter.category)) {
     const btn = chipButton(String(n), { pressed: selected === n, value: n });
     btn.addEventListener('click', () => dispatch({ type: 'setParameter', value: n }));
-    row.append(btn);
+    chips.append(btn);
   }
-  root.append(row);
 }
 
 function selectedPrice(filter, side) {
@@ -614,11 +618,20 @@ export function createView(root) {
           <div class="control-label">種類</div>
           <div class="category-row" data-role="categories"></div>
         </div>
-        <div class="control-block">
-          <div class="control-label">状態</div>
+        <details class="control-fold">
+          <summary class="control-label">
+            <span>状態</span>
+            <span class="fold-value" data-role="status-value"></span>
+          </summary>
           <div class="status-row" data-role="status" role="group" aria-label="状態"></div>
-        </div>
-        <div class="control-block" data-role="params" hidden></div>
+        </details>
+        <details class="control-fold" data-role="params" hidden>
+          <summary class="control-label">
+            <span data-role="params-title">容量</span>
+            <span class="fold-value" data-role="params-value"></span>
+          </summary>
+          <div class="chip-row" data-role="params-chips"></div>
+        </details>
         <div class="price-row">
           <div class="control-block">
             <div class="control-label">買値</div>
@@ -675,6 +688,7 @@ export function createView(root) {
   const els = {
     categories: root.querySelector('[data-role="categories"]'),
     status: root.querySelector('[data-role="status"]'),
+    statusValue: root.querySelector('[data-role="status-value"]'),
     params: root.querySelector('[data-role="params"]'),
     count: root.querySelector('[data-role="count"]'),
     empty: root.querySelector('[data-role="empty"]'),
@@ -731,6 +745,7 @@ export function createView(root) {
         const statusKey = statusRenderKey(filter);
         if (shownStatusKey !== statusKey) {
           renderStatusBar(els.status, filter, dispatch);
+          els.statusValue.textContent = includedStatusLabel(filter);
           shownStatusKey = statusKey;
         }
         const paramsKey = `${filter.category}:${filter.parameter.value ?? ''}`;

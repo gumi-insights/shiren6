@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gumi-insights.github.io/shiren6/sitemap.xml

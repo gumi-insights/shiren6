@@ -67,6 +67,11 @@ body {
   margin-bottom: 12px;
 }
 
+.noscript {
+  margin: 0;
+  font-size: 16px;
+}
+
 .page-title {
   margin: 0;
   font-family: "DotGothic16", "Yu Gothic UI", monospace;
@@ -91,6 +96,57 @@ body {
 
 .control-block + .control-block {
   margin-top: 12px;
+}
+
+.control-fold {
+  margin-top: 12px;
+}
+
+.control-fold > summary.control-label {
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: 0;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.control-fold > summary::-webkit-details-marker,
+.control-fold > summary::marker {
+  display: none;
+  content: "";
+}
+
+.control-fold[open] > summary.control-label {
+  margin-bottom: 8px;
+}
+
+.control-fold > summary:focus-visible {
+  outline: 2px solid var(--gb-darkest);
+  outline-offset: 2px;
+}
+
+.fold-value {
+  margin-left: auto;
+  color: var(--gb-dark);
+  font-size: 14px;
+}
+
+.control-fold > summary.control-label::after {
+  content: "";
+  width: 0;
+  height: 0;
+  margin-left: 8px;
+  flex: 0 0 auto;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid var(--gb-darkest);
+}
+
+.control-fold[open] > summary.control-label::after {
+  border-top: 0;
+  border-bottom: 7px solid var(--gb-darkest);
 }
 
 .control-label {

@@ -11,7 +11,7 @@
   --radius-circle: 50%;
   font-family: "DotGothic16", "Yu Gothic UI", monospace;
   color: var(--gb-darkest);
-  background: var(--gb-shell);
+  background: var(--gb-bezel);
 }
 
 *,
@@ -23,24 +23,24 @@
 body {
   margin: 0;
   min-height: 100dvh;
-  padding: 12px;
-  background: var(--gb-shell);
+  padding: 0;
+  background: var(--gb-lightest);
   color: var(--gb-darkest);
   font-family: "DotGothic16", "Yu Gothic UI", monospace;
   font-size: 16px;
   line-height: 1.45;
+  border: 6px solid var(--gb-bezel);
+  border-radius: var(--radius-frame);
+  box-shadow: inset 0 0 0 3px #2a2e28;
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: unset;
 }
 
 #app {
   position: relative;
-  min-height: calc(100dvh - 24px);
+  min-height: calc(100dvh - 12px);
   padding: 12px;
-  background: var(--gb-lightest);
-  border: 12px solid var(--gb-bezel);
-  border-radius: var(--radius-frame);
-  box-shadow: inset 0 0 0 3px #2a2e28;
+  background: transparent;
   color: var(--gb-darkest);
 }
 
@@ -544,7 +544,7 @@ body {
   gap: 10px;
   align-items: flex-start;
   padding: 8px;
-  background: var(--gb-light);
+  background: var(--gb-lightest);
   border: 2px solid var(--gb-darkest);
   border-radius: var(--radius-frame);
   will-change: transform, opacity;
@@ -555,7 +555,7 @@ body {
 }
 
 .result-row.is-identified {
-  background: var(--gb-lightest);
+  background: var(--gb-light);
 }
 
 .identify-toggle {

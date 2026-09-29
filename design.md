@@ -4,7 +4,7 @@
 
 ## 文字
 
-フォントは `"DotGothic16", "Yu Gothic UI", monospace` である。`index.html` が Google Fonts から DotGothic16 を読み込む。
+フォントは `"DotGothic16", "Yu Gothic UI", monospace` である。`styles.css` が、画面に出る文字だけを含んだ DotGothic16 を `assets/fonts/DotGothic16-subset.woff2` から読み込む。
 
 `styles.css` が決める大きさは次のとおりである。
 

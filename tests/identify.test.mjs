@@ -76,10 +76,10 @@ test('parsed category counts', () => {
   const counts = { 草: 0, 巻物: 0, 腕輪: 0, 壺: 0, 杖: 0 };
   for (const item of catalog.items) counts[item.category]++;
   assert.equal(counts['草'], 27);
-  assert.equal(counts['巻物'], 34);
+  assert.equal(counts['巻物'], 36);
   assert.equal(counts['腕輪'], 37);
-  assert.equal(counts['壺'], 20);
-  assert.equal(counts['杖'], 20);
+  assert.equal(counts['壺'], 21);
+  assert.equal(counts['杖'], 21);
 });
 
 test('草 blessed buy 100 includes 毒草 and 暴走の種 only', () => {
@@ -103,7 +103,7 @@ test('草 normal buy 100 includes 高飛び and くねくね', () => {
   assert.deepEqual(names, ['くねくね草', '高飛び草']);
 });
 
-test('杖 buy 1000 uses null keeps 場所替え and drops かなしば padding', () => {
+test('杖 buy 1000 uses null keeps 場所がえ and drops かなしば padding', () => {
   const filter = wandFilter({
     includedStatusIds: new Set(['normal']),
     price: { kind: 'buy', value: 1000 },
@@ -111,10 +111,10 @@ test('杖 buy 1000 uses null keeps 場所替え and drops かなしば padding',
   });
   const matches = queryMatches(catalog, filter);
   const byName = Object.fromEntries(matches.map((m) => [m.name, m]));
-  assert.ok(byName['場所替えの杖']);
+  assert.ok(byName['場所がえの杖']);
   assert.equal(byName['かなしばりの杖'], undefined);
-  assert.ok(byName['場所替えの杖'].points.some((p) => p.paramLabel === '残り回数 5'));
-  assert.ok(!byName['場所替えの杖'].points.some((p) => p.paramLabel === '残り回数 3'));
+  assert.ok(byName['場所がえの杖'].points.some((p) => p.paramLabel === '残り回数 5'));
+  assert.ok(!byName['場所がえの杖'].points.some((p) => p.paramLabel === '残り回数 3'));
 });
 
 test('杖 buy 1000 uses 3 includes 導きの杖 and excludes counts outside 回数設定値', () => {
@@ -127,7 +127,7 @@ test('杖 buy 1000 uses 3 includes 導きの杖 and excludes counts outside 回�
   const names = matches.map((m) => m.name);
   assert.ok(names.includes('導きの杖'));
   assert.ok(!names.includes('かなしばりの杖'));
-  assert.ok(!names.includes('場所替えの杖'));
+  assert.ok(!names.includes('場所がえの杖'));
 });
 
 test('杖 uses 7 hides items whose 回数設定値 does not include 7', () => {
@@ -136,7 +136,7 @@ test('杖 uses 7 hides items whose 回数設定値 does not include 7', () => {
     parameter: { kind: 'uses', value: 7 },
   });
   const names = queryMatches(catalog, filter).map((m) => m.name);
-  assert.ok(names.includes('場所替えの杖'));
+  assert.ok(names.includes('場所がえの杖'));
   assert.ok(!names.includes('かなしばりの杖'));
   assert.ok(!names.includes('導きの杖'));
 });
@@ -344,7 +344,8 @@ test('changing 壺 capacity clears a buy price that would still match', () => {
       'おはらいの壺',
       'ただの壺',
       'トドの壺',
-      'やりすごの壺',
+      'ビックリの壺',
+      'やりすごしの壺',
       '割れない壺',
       '換金の壺',
       '強化の壺',
@@ -374,7 +375,7 @@ test('changing 杖 uses clears the sell price and lists that use count', () => {
   assert.deepEqual(state.parameter, { kind: 'uses', value: 7 });
   assert.deepEqual(
     queryMatches(catalog, state).map((match) => match.name),
-    ['ただの杖', '場所替えの杖', '吹き飛ばの杖', '痛み分けの杖', '転ばぬ先の杖', '飛びつきの杖', '魔道の杖'],
+    ['ガイコツまどうの杖', 'ただの杖', '場所がえの杖', '吹き飛ばしの杖', '痛み分けの杖', '転ばぬ先の杖', '飛びつきの杖', '魔道の杖'],
   );
 });
 
@@ -386,7 +387,7 @@ test('selecting the current capacity keeps the buy price', () => {
   assert.deepEqual(state.price, { kind: 'buy', value: 1100 });
   assert.deepEqual(
     queryMatches(catalog, state).map((match) => match.name),
-    ['ただの壺', 'やりすごの壺', '識別の壺', '変化の壺', '保存の壺'],
+    ['ただの壺', 'やりすごしの壺', '識別の壺', '変化の壺', '保存の壺'],
   );
 });
 

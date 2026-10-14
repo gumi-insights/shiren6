@@ -39,9 +39,11 @@ Read-only. Run it before the first drive, and again after a failed drive or a re
 node .cursor/skills/verify-shiren6/scripts/doctor.mjs --url http://127.0.0.1:4173/ --token <token>
 ```
 
-Exit 0 prints `OK http://127.0.0.1:4173/`. It checks the verify header, the page title `風来のシレン６ 道具識別`, and catalog title `シレン6 値段一覧表` with categories `草`, `巻物`, `腕輪`, `壺`, `杖`. A token mismatch means this is not the process Launch started. Do not drive it.
+Exit 0 prints `OK http://127.0.0.1:4173/`. It checks the verify header, the document title `風来のシレン6 道具識別｜買値・売値` (halfwidth `6`, plus the `｜買値・売値` suffix), and catalog title `シレン6 値段一覧表` with categories `草`, `巻物`, `腕輪`, `壺`, `杖`. A token mismatch means this is not the process Launch started. Do not drive it.
 
-A missing Google Font does not fail Doctor. The page falls back to `Yu Gothic UI`.
+The visible heading `風来のシレン６ 道具識別` uses a fullwidth `６` and has no suffix. Script paints it into `#app` after load, so Doctor does not look for it in the static HTML.
+
+A missing `assets/fonts/DotGothic16-subset.woff2` does not fail Doctor. The page falls back to `Yu Gothic UI`.
 
 ## Drive
 
@@ -49,9 +51,9 @@ Read `features/README.md`, then the feature file. Drive the browser on the READY
 
 1. `browser_snapshot` before every click. Click the ref whose role and accessible name match the recipe. Pass that name as the element description.
 2. `安い方へ` and `高い方へ` each appear twice. The `買値` reel is the first pair. The `売値` reel is the second pair, marked `nth: 1` in the snapshot. Click the button in the reel the recipe names.
-3. `状態` starts closed (`open` is false) even though its switches are already in the accessibility snapshot. Click the summary named `状態 …` before clicking a switch. `容量` / `残り回数` are absent from the snapshot until the category is `壺` or `杖`, and they start closed too.
+3. `状態` starts closed (`open` is false) even though its switches are already in the accessibility snapshot. Click the summary named `状態 …` before treating the panel as open. `容量` / `残り回数` are absent until the category is `壺` or `杖`. Once present they start closed, and their chips are already in the snapshot the same way.
 4. Focus a reel by clicking the widget named `買値` or `売値`, then `browser_press_key` with `ArrowDown` or `ArrowUp`. `Escape` applies only while the reset confirm is open (focus starts on `やめる`).
-5. Read resulting state with `browser_cdp` method `Runtime.evaluate`, `returnByValue: true`. Do not call CDP `Input.*` or `Storage.*`.
+5. Read resulting state with `browser_cdp` method `Runtime.evaluate`, `returnByValue: true`. Do not call CDP `Input.*` or `Storage.*`. Rows that are leaving stay in the accessibility snapshot for 280ms. Save `result.yml` only after `document.querySelectorAll('.is-leaving').length === 0`. The `names` expression below skips those rows. The count text is already the new value during the animation.
 
 ```javascript
 (() => ({
@@ -60,7 +62,7 @@ Read `features/README.md`, then the feature file. Drive the browser on the READY
   emptyHidden: document.querySelector('[data-role="empty"]')?.hidden ?? null,
   buySelected: document.querySelector('[data-role="buy-reel"] .reel-item.is-selected')?.textContent ?? null,
   sellSelected: document.querySelector('[data-role="sell-reel"] .reel-item.is-selected')?.textContent ?? null,
-  names: [...document.querySelectorAll('.result-name')].map((el) => el.textContent),
+  names: [...document.querySelectorAll('.result-row:not(.is-leaving) .result-name')].map((el) => el.textContent),
   paramsHidden: document.querySelector('[data-role="params"]')?.hidden ?? null,
   paramsTitle: document.querySelector('[data-role="params-title"]')?.textContent ?? null,
   paramsValue: document.querySelector('[data-role="params-value"]')?.textContent ?? null,

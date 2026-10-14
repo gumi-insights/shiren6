@@ -22,8 +22,9 @@ if (page.status !== 200) fail(`GET / status ${page.status}`);
 if (page.headers.get('x-shiren6-verify') !== token) {
   fail('X-Shiren6-Verify does not match this run. Refusing to drive a server this run did not start.');
 }
-if (!html.includes('<title>風来のシレン６ 道具識別</title>')) {
-  fail('page title is not 風来のシレン６ 道具識別');
+const documentTitle = '風来のシレン6 道具識別｜買値・売値';
+if (!html.includes(`<title>${documentTitle}</title>`)) {
+  fail(`page title is not ${documentTitle}`);
 }
 
 const catalogRes = await fetch(`${base}/data/shiren6_prices.json`);

@@ -5,14 +5,25 @@ export function adjustPrice(base, status) {
   return Math.floor((base * 87) / 100);
 }
 
-const CATEGORY_STATUS_IDS = {
-  草: ['normal', 'blessed', 'cursed'],
-  巻物: ['normal', 'blessed', 'cursed'],
-  腕輪: ['normal', 'cursed'],
-  壺: ['normal', 'cursed'],
-  杖: ['normal', 'cursed'],
-};
-const STATUS_LABELS = { normal: '通常', blessed: '祝福', cursed: '呪い' };
+const STATUSES = [
+  { id: 'normal', label: '通常' },
+  { id: 'blessed', label: '祝福' },
+  { id: 'cursed', label: '呪い' },
+];
+
+function legalStatusIds(category) {
+  const ids = [];
+  for (const status of STATUSES) {
+    if (
+      status.id === 'blessed' &&
+      (category === '腕輪' || category === '壺' || category === '杖')
+    ) {
+      continue;
+    }
+    ids.push(status.id);
+  }
+  return ids;
+}
 
 function parameterFor(category) {
   if (category === '壺') return { kind: 'capacity', value: null };
@@ -23,9 +34,7 @@ function parameterFor(category) {
 function blankFor(category) {
   return {
     category,
-    includedStatusIds: new Set(
-      CATEGORY_STATUS_IDS[category].filter((id) => id !== 'cursed'),
-    ),
+    includedStatusIds: new Set(legalStatusIds(category).filter((id) => id !== 'cursed')),
     price: { kind: 'any' },
     parameter: parameterFor(category),
   };
@@ -47,7 +56,7 @@ export function reduceFilter(state, action) {
     case 'selectCategory':
       return blankFor(action.category);
     case 'toggleStatus': {
-      const legal = CATEGORY_STATUS_IDS[state.category];
+      const legal = legalStatusIds(state.category);
       if (!legal.includes(action.status)) return state;
       const includedStatusIds = new Set(state.includedStatusIds);
       if (includedStatusIds.has(action.status)) includedStatusIds.delete(action.status);
@@ -85,17 +94,15 @@ export function reduceFilter(state, action) {
 }
 
 export function statusChoices(filter) {
-  return CATEGORY_STATUS_IDS[filter.category].map((id) => ({
+  return legalStatusIds(filter.category).map((id) => ({
     id,
-    label: STATUS_LABELS[id],
+    label: STATUSES.find((status) => status.id === id).label,
     included: filter.includedStatusIds.has(id),
   }));
 }
 
 function includedLegalStatusIds(filter) {
-  return CATEGORY_STATUS_IDS[filter.category].filter((id) =>
-    filter.includedStatusIds.has(id),
-  );
+  return legalStatusIds(filter.category).filter((id) => filter.includedStatusIds.has(id));
 }
 
 function boundsOf(naturalRange) {
@@ -194,6 +201,79 @@ export function queryMatches(catalog, filter) {
   }
   matches.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
   return matches;
+}
+
+function minSide(points, side) {
+  let min = points[0][side];
+  for (const point of points) {
+    if (point[side] < min) min = point[side];
+  }
+  return min;
+}
+
+function statusRank(status) {
+  return STATUSES.findIndex((entry) => entry.id === status);
+}
+
+function compareStatusCards(a, b) {
+  const buy = minSide(a.points, 'buy') - minSide(b.points, 'buy');
+  if (buy !== 0) return buy;
+  const sell = minSide(a.points, 'sell') - minSide(b.points, 'sell');
+  if (sell !== 0) return sell;
+  const name = a.name.localeCompare(b.name, 'ja');
+  if (name !== 0) return name;
+  return statusRank(a.status) - statusRank(b.status);
+}
+
+function statusCards(match) {
+  const groups = new Map();
+  for (const point of match.points) {
+    let group = groups.get(point.status);
+    if (!group) {
+      group = [];
+      groups.set(point.status, group);
+    }
+    group.push(point);
+  }
+  const cards = [];
+  for (const [status, points] of groups) {
+    cards.push({
+      listing: 'status',
+      status,
+      rowKey: `${match.key}\t${status}`,
+      itemId: match.key,
+      name: match.name,
+      mark: match.mark,
+      category: match.category,
+      naturalRange: match.naturalRange,
+      points,
+    });
+  }
+  return cards;
+}
+
+function pricedCard(match) {
+  return {
+    listing: 'priced',
+    rowKey: match.key,
+    itemId: match.key,
+    name: match.name,
+    mark: match.mark,
+    category: match.category,
+    naturalRange: match.naturalRange,
+    points: match.points,
+  };
+}
+
+export function listCandidates(catalog, filter) {
+  const matches = queryMatches(catalog, filter);
+  if (filter.price.kind === 'buy' || filter.price.kind === 'sell') {
+    return matches.map(pricedCard);
+  }
+  const cards = [];
+  for (const match of matches) cards.push(...statusCards(match));
+  cards.sort(compareStatusCards);
+  return cards;
 }
 
 export function parameterOptions(catalog, category) {

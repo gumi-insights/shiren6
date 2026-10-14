@@ -17,7 +17,7 @@ This directory is the maintained source for verifying the user-facing behavior o
 - Snapshot, then click the ref whose role and accessible name match the bullet. Keep those names exact.
 - `安い方へ` and `高い方へ` are duplicated. The `買値` reel's pair comes first. The `売値` reel's pair comes second.
 - Open a closed disclosure before expecting its switches or chips in the snapshot.
-- Read count, names, reel selection, and `shiren6.identified` with the `Runtime.evaluate` expression in the skill. Do not infer them from pixels alone.
+- Read count, names, reel selection, and `shiren6.identified` with the `Runtime.evaluate` expression in the skill. Do not infer them from pixels alone. Wait until `.is-leaving` is empty before saving a result snapshot; leaving rows stay visible to accessibility for 280ms.
 - Reload to prove identify marks. Reloading is navigation to the same READY url.
 
 ## Proof and skip reporting

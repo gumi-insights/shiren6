@@ -49,8 +49,12 @@ body {
 
 #app {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 12px);
   min-height: calc(100dvh - 12px);
   padding: 12px;
+  overflow: hidden;
   background: transparent;
   color: var(--gb-darkest);
 }
@@ -68,13 +72,14 @@ body {
   );
 }
 
-.page-header,
-.layout {
+.page-header {
   position: relative;
   z-index: 1;
-}
-
-.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: none;
   margin-bottom: 12px;
 }
 
@@ -84,18 +89,59 @@ body {
 }
 
 .page-title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-family: "DotGothic16", "Yu Gothic UI", monospace;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 400;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   line-height: 1.4;
 }
 
+.drawer-toggle,
+.price-side button {
+  min-height: 44px;
+  min-width: 44px;
+  border: 2px solid var(--gb-darkest);
+  border-radius: var(--radius-frame);
+  background: var(--gb-light);
+  color: var(--gb-darkest);
+  font-family: "DotGothic16", "Yu Gothic UI", monospace;
+  font-size: 16px;
+  line-height: 1.35;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.drawer-toggle {
+  flex: none;
+}
+
+.drawer-toggle:focus-visible,
+.price-side button:focus-visible {
+  outline: 2px solid var(--gb-darkest);
+  outline-offset: 2px;
+}
+
+.price-side button[aria-pressed='true'] {
+  background: var(--gb-darkest);
+  border-color: var(--gb-darkest);
+  color: var(--gb-lightest);
+}
+
 .layout {
+  position: relative;
+  /* auto lets the drawer paint above #app::before; z-index 1 would trap it */
+  z-index: auto;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   gap: 12px;
+  --chrome: 0;
+  --reel-axis: 0;
 }
 
 .controls,
@@ -103,6 +149,22 @@ body {
   padding: 0;
   background: transparent;
   border: 0;
+}
+
+.results {
+  order: 1;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.controls {
+  order: 2;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .control-block + .control-block {
@@ -358,11 +420,77 @@ body {
   color: var(--gb-lightest);
 }
 
-.price-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.category-dock {
+  order: 2;
+  min-width: 0;
+}
+
+.category-dock > .control-label,
+.price-row .control-label {
+  display: none;
+}
+
+.drawer-scrim {
+  position: fixed;
+  inset: 6px;
+  z-index: 5;
+  display: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(26, 38, 18, 0.45);
+  cursor: pointer;
+}
+
+.controls.is-drawer-open .drawer-scrim {
+  display: block;
+}
+
+.drawer {
+  position: fixed;
+  z-index: 6;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: min(20rem, calc(100% - 48px));
+  transform: translateX(calc(-100% - 6px));
+  overflow: auto;
+  padding: 12px;
+  border: 3px solid var(--gb-darkest);
+  border-radius: var(--radius-frame);
+  background: var(--gb-lightest);
+  color: var(--gb-darkest);
+}
+
+.controls.is-drawer-open .drawer {
+  transform: translateX(0);
+}
+
+.price-dock {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  margin-top: 12px;
+  order: 1;
+  min-width: 0;
+}
+
+.price-side {
+  display: flex;
+  flex: none;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.price-dock[data-price-side='buy'] [data-role='sell-reel'],
+.price-dock[data-price-side='sell'] [data-role='buy-reel'] {
+  display: none;
+}
+
+.price-row {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
 }
 
 .price-row .control-block {
@@ -370,6 +498,9 @@ body {
 }
 
 .reel {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
   background: var(--gb-light);
   border: 3px solid var(--gb-darkest);
   border-radius: var(--radius-frame);
@@ -387,13 +518,29 @@ body {
   border: 0;
   background: transparent;
   color: var(--gb-darkest);
-  font-size: 16px;
+  font-size: 0;
   padding: 0;
+}
+
+.nudge[data-dir='-1']::before,
+.nudge[data-dir='1']::before {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.nudge[data-dir='-1']::before {
+  content: "◀";
+}
+
+.nudge[data-dir='1']::before {
+  content: "▶";
 }
 
 .reel-window {
   position: relative;
-  height: calc(var(--row) * 3);
+  flex: 1;
+  height: var(--row);
+  min-width: var(--row);
   overflow: hidden;
   touch-action: none;
   outline: none;
@@ -405,10 +552,11 @@ body {
 
 .reel-cursor {
   position: absolute;
-  left: 3px;
-  right: 3px;
-  top: var(--row);
-  height: var(--row);
+  top: 0;
+  bottom: 0;
+  left: calc(50% - var(--row) / 2);
+  width: var(--row);
+  height: auto;
   background: var(--gb-darkest);
   pointer-events: none;
   z-index: 0;
@@ -417,13 +565,16 @@ body {
 .reel-strip {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: row;
 }
 
 .reel-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  flex: 0 0 var(--row);
+  width: var(--row);
   height: var(--row);
   background: transparent;
   color: var(--gb-dark);
@@ -689,16 +840,120 @@ body {
 }
 
 @media (min-width: 880px) {
+  #app {
+    display: block;
+    height: auto;
+    overflow: visible;
+    padding: 12px;
+  }
+
   .layout {
     display: grid;
     grid-template-columns: minmax(280px, 340px) 1fr;
     align-items: start;
     gap: 1.25rem;
+    z-index: 1;
+    --chrome: 1;
+    --reel-axis: 1;
   }
 
   .controls {
+    display: block;
     position: sticky;
     top: 1rem;
+    order: 0;
+    height: auto;
+    padding-bottom: 0;
+  }
+
+  .results {
+    order: 0;
+    flex: none;
+    overflow: visible;
+  }
+
+  .category-dock,
+  .price-dock {
+    position: static;
+    order: 0;
+  }
+
+  .category-dock > .control-label,
+  .price-row .control-label {
+    display: flex;
+  }
+
+  .price-side,
+  .drawer-toggle,
+  .drawer-scrim,
+  .controls.is-drawer-open .drawer-scrim {
+    display: none;
+  }
+
+  .drawer,
+  .controls.is-drawer-open .drawer {
+    position: static;
+    transform: none;
+    width: auto;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    z-index: auto;
+    overflow: visible;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .price-dock[data-price-side] [data-role='buy-reel'],
+  .price-dock[data-price-side] [data-role='sell-reel'] {
+    display: block;
+  }
+
+  .price-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .reel {
+    display: block;
+  }
+
+  .reel-window {
+    flex: none;
+    width: auto;
+    height: calc(var(--row) * 3);
+    min-width: 0;
+  }
+
+  .reel-strip {
+    display: block;
+  }
+
+  .reel-item {
+    flex: none;
+    width: 100%;
+  }
+
+  .reel-cursor {
+    top: var(--row);
+    bottom: auto;
+    left: 3px;
+    right: 3px;
+    width: auto;
+    height: var(--row);
+  }
+
+  .nudge {
+    font-size: 16px;
+  }
+
+  .nudge[data-dir]::before {
+    content: none;
   }
 
   .page-title {

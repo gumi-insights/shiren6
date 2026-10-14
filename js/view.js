@@ -9,7 +9,10 @@ const CATEGORY_FILE = {
   杖: 'staff',
 };
 const numberFmt = new Intl.NumberFormat('ja-JP');
-const ROW = 48;
+
+/** @typedef {'buy' | 'sell'} PriceSide */
+/** @typedef {'closed' | 'open'} DrawerPhase */
+/** @typedef {{ drawer: DrawerPhase, preferredSide: PriceSide, foldsSeeded: boolean }} ChromeState */
 
 let leaveTimers = new Map();
 const missingIcons = new Set();
@@ -216,6 +219,31 @@ function renderParamChips(panel, catalog, filter, dispatch) {
 
 function selectedPrice(filter, side) {
   return filter.price.kind === side ? filter.price.value : null;
+}
+
+function readRow(reelRoot) {
+  return parseFloat(getComputedStyle(reelRoot).getPropertyValue('--row'));
+}
+
+function readAxis(reelRoot) {
+  return Number(getComputedStyle(reelRoot).getPropertyValue('--reel-axis')) === 1 ? 'y' : 'x';
+}
+
+function readChrome(layout) {
+  return Number(getComputedStyle(layout).getPropertyValue('--chrome')) === 1 ? 'desktop' : 'phone';
+}
+
+function shownSide(price, preferredSide) {
+  if (price.kind === 'buy' || price.kind === 'sell') return price.kind;
+  return preferredSide;
+}
+
+function priceSideTransition(preferredSide, price, side) {
+  if (shownSide(price, preferredSide) === side) return { preferredSide, action: null };
+  let action = null;
+  if (price.kind === 'buy') action = { type: 'setBuy', buy: null };
+  else if (price.kind === 'sell') action = { type: 'setSell', sell: null };
+  return { preferredSide: side, action };
 }
 
 function buildStops(catalog, filter, side) {
@@ -475,9 +503,9 @@ function renderResultsList(listEl, emptyEl, countEl, matches, choices, identifie
   }
 }
 
-function mountReel(root, side) {
-  const strip = root.querySelector('.reel-strip');
-  const windowEl = root.querySelector('.reel-window');
+function mountReel(reelRoot, side) {
+  const strip = reelRoot.querySelector('.reel-strip');
+  const windowEl = reelRoot.querySelector('.reel-window');
   let stops = [];
   let index = 0;
   let pointer = null;
@@ -489,7 +517,13 @@ function mountReel(root, side) {
   }
 
   function paintTransform(at) {
-    strip.style.transform = `translateY(${(1 - at) * ROW}px)`;
+    const row = readRow(reelRoot);
+    const axis = readAxis(reelRoot);
+    const span = axis === 'x' ? windowEl.clientWidth : windowEl.clientHeight;
+    // No client span means the reel is not shown. Leave the transform from the other axis.
+    if (span === 0 || !(row > 0)) return;
+    const offset = span / 2 - row / 2 - at * row;
+    strip.style.transform = axis === 'x' ? `translateX(${offset}px)` : `translateY(${offset}px)`;
   }
 
   function paintClasses() {
@@ -529,6 +563,20 @@ function mountReel(root, side) {
     }
   }
 
+  function dropPointer() {
+    if (!pointer) return;
+    const id = pointer.id;
+    pointer = null;
+    if (windowEl.hasPointerCapture(id)) windowEl.releasePointerCapture(id);
+  }
+
+  function syncAxis() {
+    const axis = readAxis(reelRoot);
+    if (pointer && axis !== pointer.axis) dropPointer();
+    paintTransform(index);
+    paintClasses();
+  }
+
   function paint(catalog, filter, nextDispatch) {
     dispatch = nextDispatch;
     if (pointer) return;
@@ -543,21 +591,25 @@ function mountReel(root, side) {
       nextStops.every((stop, i) => stop.value === stops[i].value && stop.label === stops[i].label);
     stops = nextStops;
     index = nextIndex;
-    if (same) return;
-    syncStrip();
+    if (!same) {
+      syncStrip();
+      paintClasses();
+    }
     paintTransform(index);
-    paintClasses();
   }
 
   windowEl.addEventListener(
     'wheel',
     (event) => {
       event.preventDefault();
-      let delta = event.deltaY;
-      if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) delta *= ROW;
-      else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) delta *= ROW * 3;
+      const axis = readAxis(reelRoot);
+      const row = readRow(reelRoot);
+      if (!(row > 0)) return;
+      let delta = axis === 'y' ? event.deltaY : event.deltaX === 0 ? event.deltaY : event.deltaX;
+      if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) delta *= row;
+      else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) delta *= row * 3;
       wheelAccum += delta;
-      if (Math.abs(wheelAccum) < ROW) return;
+      if (Math.abs(wheelAccum) < row) return;
       const dir = Math.sign(wheelAccum);
       wheelAccum = 0;
       commit(index + dir);
@@ -566,21 +618,31 @@ function mountReel(root, side) {
   );
 
   windowEl.addEventListener('pointerdown', (event) => {
-    pointer = { id: event.pointerId, y: event.clientY, index };
+    const axis = readAxis(reelRoot);
+    pointer = {
+      id: event.pointerId,
+      axis,
+      origin: axis === 'x' ? event.clientX : event.clientY,
+      index,
+    };
     windowEl.setPointerCapture(event.pointerId);
   });
 
   windowEl.addEventListener('pointermove', (event) => {
     if (!pointer || pointer.id !== event.pointerId) return;
-    const dy = event.clientY - pointer.y;
-    const visual = clamp(pointer.index - dy / ROW);
-    paintTransform(visual);
+    const row = readRow(reelRoot);
+    if (!(row > 0)) return;
+    const point = pointer.axis === 'x' ? event.clientX : event.clientY;
+    const delta = point - pointer.origin;
+    paintTransform(clamp(pointer.index - delta / row));
   });
 
   function endPointer(event) {
     if (!pointer || pointer.id !== event.pointerId) return;
-    const dy = event.clientY - pointer.y;
-    const next = Math.round(pointer.index - dy / ROW);
+    const row = readRow(reelRoot);
+    const point = pointer.axis === 'x' ? event.clientX : event.clientY;
+    const delta = point - pointer.origin;
+    const next = row > 0 ? Math.round(pointer.index - delta / row) : pointer.index;
     pointer = null;
     commit(next);
   }
@@ -589,77 +651,86 @@ function mountReel(root, side) {
   windowEl.addEventListener('pointercancel', endPointer);
 
   windowEl.addEventListener('keydown', (event) => {
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      commit(index - 1);
-    } else if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      commit(index + 1);
-    }
+    const axis = readAxis(reelRoot);
+    const cheaper = axis === 'y' ? 'ArrowUp' : 'ArrowLeft';
+    const dearer = axis === 'y' ? 'ArrowDown' : 'ArrowRight';
+    if (event.key !== cheaper && event.key !== dearer) return;
+    event.preventDefault();
+    commit(index + (event.key === cheaper ? -1 : 1));
   });
 
-  root.querySelectorAll('.nudge').forEach((btn) => {
+  reelRoot.querySelectorAll('.nudge').forEach((btn) => {
     btn.addEventListener('click', () => {
       commit(index + Number(btn.dataset.dir));
     });
   });
 
-  return { paint };
+  return { paint, syncAxis };
 }
 
 export function createView(root) {
   root.innerHTML = `
     <header class="page-header">
       <h1 class="page-title">風来のシレン６ 道具識別</h1>
+      <button type="button" class="drawer-toggle" data-role="drawer-toggle" aria-expanded="false" aria-controls="filter-drawer">絞り込み</button>
     </header>
     <div class="layout">
       <section class="controls" aria-label="絞り込み">
-        <div class="control-block">
+        <div class="category-dock">
           <div class="control-label">種類</div>
           <div class="category-row" data-role="categories"></div>
         </div>
-        <details class="control-fold">
-          <summary class="control-label">
-            <span>状態</span>
-            <span class="fold-value" data-role="status-value"></span>
-          </summary>
-          <div class="status-row" data-role="status" role="group" aria-label="状態"></div>
-        </details>
-        <details class="control-fold" data-role="params" hidden>
-          <summary class="control-label">
-            <span data-role="params-title">容量</span>
-            <span class="fold-value" data-role="params-value"></span>
-          </summary>
-          <div class="chip-row" data-role="params-chips"></div>
-        </details>
-        <div class="price-row">
-          <div class="control-block">
-            <div class="control-label">買値</div>
-            <div class="reel" data-role="buy-reel" data-side="buy">
-              <div class="nudge-row">
-                <button type="button" class="nudge" data-dir="-1" aria-label="安い方へ">▲</button>
-              </div>
-              <div class="reel-window" tabindex="0" aria-label="買値">
-                <div class="reel-cursor"></div>
-                <div class="reel-strip"></div>
-              </div>
-              <div class="nudge-row">
-                <button type="button" class="nudge" data-dir="1" aria-label="高い方へ">▼</button>
+        <button type="button" class="drawer-scrim" data-role="drawer-scrim" tabindex="-1" aria-label="絞り込みを閉じる"></button>
+        <div class="drawer" id="filter-drawer" data-role="drawer">
+          <details class="control-fold">
+            <summary class="control-label">
+              <span>状態</span>
+              <span class="fold-value" data-role="status-value"></span>
+            </summary>
+            <div class="status-row" data-role="status" role="group" aria-label="状態"></div>
+          </details>
+          <details class="control-fold" data-role="params" hidden>
+            <summary class="control-label">
+              <span data-role="params-title">容量</span>
+              <span class="fold-value" data-role="params-value"></span>
+            </summary>
+            <div class="chip-row" data-role="params-chips"></div>
+          </details>
+        </div>
+        <div class="price-dock" data-price-side="buy">
+          <div class="price-side" data-role="price-side" role="group" aria-label="値段の種類">
+            <button type="button" data-side="buy" aria-pressed="true">買値</button>
+            <button type="button" data-side="sell" aria-pressed="false">売値</button>
+          </div>
+          <div class="price-row">
+            <div class="control-block">
+              <div class="control-label">買値</div>
+              <div class="reel" data-role="buy-reel" data-side="buy">
+                <div class="nudge-row">
+                  <button type="button" class="nudge" data-dir="-1" aria-label="安い方へ">▲</button>
+                </div>
+                <div class="reel-window" tabindex="0" aria-label="買値">
+                  <div class="reel-cursor"></div>
+                  <div class="reel-strip"></div>
+                </div>
+                <div class="nudge-row">
+                  <button type="button" class="nudge" data-dir="1" aria-label="高い方へ">▼</button>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="control-block">
-            <div class="control-label">売値</div>
-            <div class="reel" data-role="sell-reel" data-side="sell">
-              <div class="nudge-row">
-                <button type="button" class="nudge" data-dir="-1" aria-label="安い方へ">▲</button>
-              </div>
-              <div class="reel-window" tabindex="0" aria-label="売値">
-                <div class="reel-cursor"></div>
-                <div class="reel-strip"></div>
-              </div>
-              <div class="nudge-row">
-                <button type="button" class="nudge" data-dir="1" aria-label="高い方へ">▼</button>
+            <div class="control-block">
+              <div class="control-label">売値</div>
+              <div class="reel" data-role="sell-reel" data-side="sell">
+                <div class="nudge-row">
+                  <button type="button" class="nudge" data-dir="-1" aria-label="安い方へ">▲</button>
+                </div>
+                <div class="reel-window" tabindex="0" aria-label="売値">
+                  <div class="reel-cursor"></div>
+                  <div class="reel-strip"></div>
+                </div>
+                <div class="nudge-row">
+                  <button type="button" class="nudge" data-dir="1" aria-label="高い方へ">▼</button>
+                </div>
               </div>
             </div>
           </div>
@@ -686,10 +757,20 @@ export function createView(root) {
   `;
 
   const els = {
+    header: root.querySelector('.page-header'),
+    layout: root.querySelector('.layout'),
+    controls: root.querySelector('.controls'),
+    categoryDock: root.querySelector('.category-dock'),
+    priceDock: root.querySelector('.price-dock'),
+    priceSide: root.querySelector('[data-role="price-side"]'),
+    drawerToggle: root.querySelector('[data-role="drawer-toggle"]'),
+    drawerScrim: root.querySelector('[data-role="drawer-scrim"]'),
+    drawer: root.querySelector('[data-role="drawer"]'),
     categories: root.querySelector('[data-role="categories"]'),
     status: root.querySelector('[data-role="status"]'),
     statusValue: root.querySelector('[data-role="status-value"]'),
     params: root.querySelector('[data-role="params"]'),
+    results: root.querySelector('.results'),
     count: root.querySelector('[data-role="count"]'),
     empty: root.querySelector('[data-role="empty"]'),
     list: root.querySelector('[data-role="list"]'),
@@ -699,10 +780,72 @@ export function createView(root) {
     resetYes: root.querySelector('[data-role="reset-confirm-yes"]'),
   };
 
+  /** @type {ChromeState} */
+  const chrome = { drawer: 'closed', preferredSide: 'buy', foldsSeeded: false };
   let dispatch = () => {};
+  let currentFilter = null;
   let shownCategory = null;
   let shownStatusKey = null;
   let shownParamsKey = null;
+
+  function paintPriceSide(side) {
+    els.priceDock.dataset.priceSide = side;
+    for (const btn of els.priceSide.querySelectorAll('button[data-side]')) {
+      btn.setAttribute('aria-pressed', btn.dataset.side === side ? 'true' : 'false');
+    }
+  }
+
+  function reflectDrawer() {
+    const phone = readChrome(els.layout) === 'phone';
+    const open = phone && chrome.drawer === 'open';
+    els.controls.classList.toggle('is-drawer-open', open);
+    els.drawerToggle.setAttribute('aria-expanded', chrome.drawer === 'open' ? 'true' : 'false');
+    const outsiders = [els.header, els.results, els.categoryDock, els.priceDock];
+    if (open) {
+      els.drawer.inert = false;
+      els.drawer.setAttribute('role', 'dialog');
+      els.drawer.setAttribute('aria-modal', 'true');
+      els.drawer.setAttribute('aria-label', '絞り込み');
+      for (const el of outsiders) el.inert = true;
+      return;
+    }
+    els.drawer.inert = phone;
+    els.drawer.removeAttribute('role');
+    els.drawer.removeAttribute('aria-modal');
+    els.drawer.removeAttribute('aria-label');
+    for (const el of outsiders) el.inert = false;
+  }
+
+  function setDrawer(phase) {
+    if (chrome.drawer === phase) return;
+    chrome.drawer = phase;
+    reflectDrawer();
+    if (phase === 'open') els.drawer.querySelector('summary').focus();
+    else els.drawerToggle.focus();
+  }
+
+  function seedPhoneFolds(mode) {
+    if (chrome.foldsSeeded) return;
+    if (mode === 'phone') {
+      for (const fold of els.drawer.querySelectorAll('details.control-fold')) fold.open = true;
+    }
+    chrome.foldsSeeded = true;
+  }
+
+  function chooseSide(side) {
+    if (!currentFilter) return;
+    const next = priceSideTransition(chrome.preferredSide, currentFilter.price, side);
+    if (next.action === null && next.preferredSide === chrome.preferredSide) return;
+    chrome.preferredSide = next.preferredSide;
+    paintPriceSide(next.preferredSide);
+    if (next.action) {
+      dispatch(next.action);
+      return;
+    }
+    void els.priceDock.offsetWidth;
+    buyReel.syncAxis();
+    sellReel.syncAxis();
+  }
 
   function setConfirmOpen(open) {
     els.resetConfirm.hidden = !open;
@@ -732,12 +875,53 @@ export function createView(root) {
   const buyReel = mountReel(root.querySelector('[data-role="buy-reel"]'), 'buy');
   const sellReel = mountReel(root.querySelector('[data-role="sell-reel"]'), 'sell');
 
+  els.drawerToggle.addEventListener('click', () => {
+    setDrawer(chrome.drawer === 'open' ? 'closed' : 'open');
+  });
+  els.drawerScrim.addEventListener('click', () => setDrawer('closed'));
+  els.priceSide.addEventListener('click', (event) => {
+    const btn = event.target instanceof Element ? event.target.closest('button[data-side]') : null;
+    if (!btn) return;
+    const side = btn.dataset.side;
+    if (side !== 'buy' && side !== 'sell') return;
+    chooseSide(side);
+  });
+  // Capture runs before the reset confirm hides itself, so that confirm still owns Escape.
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.key !== 'Escape') return;
+      if (readChrome(els.layout) === 'desktop') return;
+      if (!els.resetConfirm.hidden) return;
+      if (chrome.drawer !== 'open') return;
+      event.preventDefault();
+      setDrawer('closed');
+    },
+    true,
+  );
+
+  reflectDrawer();
+
+  const chromeObserver = new ResizeObserver(() => {
+    if (readChrome(els.layout) === 'desktop') setDrawer('closed');
+    reflectDrawer();
+    buyReel.syncAxis();
+    sellReel.syncAxis();
+  });
+  chromeObserver.observe(document.documentElement);
+
   return {
     render(catalog, filter, identified, nextDispatch, options = {}) {
       dispatch = nextDispatch;
+      currentFilter = filter;
       els.reset.disabled = identified.size === 0;
       if (identified.size === 0) setConfirmOpen(false);
       if (!options.resultsOnly) {
+        seedPhoneFolds(readChrome(els.layout));
+        reflectDrawer();
+        paintPriceSide(shownSide(filter.price, chrome.preferredSide));
+        // The hidden reel stays out of layout until data-price-side is applied, so measure after that write.
+        void els.priceDock.offsetWidth;
         if (shownCategory !== filter.category) {
           renderCategoryBar(els.categories, filter, dispatch);
           shownCategory = filter.category;

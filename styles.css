@@ -689,29 +689,12 @@ body {
 }
 
 .result-status {
-  font-size: 16px;
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  border: 2px solid var(--gb-darkest);
-  border-radius: var(--radius-frame);
-  padding: 0.05rem 0.35rem;
-  background: var(--gb-darkest);
-  color: var(--gb-lightest);
-}
-
-.result-status.is-blessed {
-  background: var(--gb-lightest);
-  color: var(--gb-darkest);
-  box-shadow: inset 0 0 0 3px var(--gb-darkest);
-}
-
-.result-status.is-cursed {
-  background: repeating-linear-gradient(
-    45deg,
-    var(--gb-darkest) 0 2px,
-    var(--gb-dark) 2px 4px
-  );
-  color: var(--gb-lightest);
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  display: block;
+  flex: none;
+  image-rendering: pixelated;
 }
 
 @media (min-width: 880px) {

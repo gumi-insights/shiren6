@@ -251,10 +251,7 @@ function appendPrices(body, points, choices) {
     if (!group) continue;
     const line = document.createElement('div');
     line.className = 'result-prices';
-    const tag = document.createElement('span');
-    tag.className = `result-status is-${choice.id}`;
-    tag.textContent = choice.label;
-    line.append(tag, priceBox('buy', group), priceBox('sell', group));
+    line.append(priceBox('buy', group), priceBox('sell', group));
     body.append(line);
   }
 }

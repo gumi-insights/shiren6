@@ -1,4 +1,4 @@
-import { parameterOptions, priceChips, queryMatches, statusChoices } from './domain.js';
+import { listCandidates, parameterOptions, priceChips, statusChoices } from './domain.js';
 
 const CATEGORIES = ['草', '巻物', '腕輪', '壺', '杖'];
 const CATEGORY_FILE = {
@@ -323,13 +323,13 @@ function syncResultRow(li, match, choices, identified) {
     li.dataset.iconStatus = nextIcon;
   }
   fillResultBody(li.querySelector('.result-body'), match, choices);
-  applyIdentifiedState(li, identified.has(match.key), match.name);
+  applyIdentifiedState(li, identified.has(match.itemId), match.name);
 }
 
 function buildResultRow(match, choices, identified, onToggleIdentified) {
   const li = document.createElement('li');
   li.className = 'result-row';
-  li.dataset.key = match.key;
+  li.dataset.key = match.rowKey;
   li.dataset.iconStatus = iconStatus(match.points);
 
   const iconWrap = document.createElement('div');
@@ -355,28 +355,31 @@ function buildResultRow(match, choices, identified, onToggleIdentified) {
   mark.className = 'identify-mark';
   mark.setAttribute('aria-hidden', 'true');
   toggle.append(mark);
-  toggle.addEventListener('click', () => onToggleIdentified(match.key));
+  toggle.addEventListener('click', () => onToggleIdentified(match.itemId));
 
   li.append(iconWrap, body, toggle);
-  applyIdentifiedState(li, identified.has(match.key), match.name);
+  applyIdentifiedState(li, identified.has(match.itemId), match.name);
   return li;
 }
 
 function identifiedCountLabel(matches, identified) {
-  const known = matches.filter((match) => identified.has(match.key)).length;
-  if (known === 0) return `${matches.length}件`;
-  return `${matches.length}件（識別済み ${known}）`;
+  const known = new Set();
+  for (const match of matches) {
+    if (identified.has(match.itemId)) known.add(match.itemId);
+  }
+  if (known.size === 0) return `${matches.length}件`;
+  return `${matches.length}件（識別済み ${known.size}）`;
 }
 
 function paintIdentified(listEl, countEl, matches, identified) {
   countEl.textContent = identifiedCountLabel(matches, identified);
-  const byKey = new Map(matches.map((match) => [match.key, match]));
+  const byKey = new Map(matches.map((match) => [match.rowKey, match]));
   for (const child of listEl.children) {
     if (!(child instanceof HTMLElement) || !child.dataset.key) continue;
     if (child.classList.contains('is-leaving')) continue;
     const match = byKey.get(child.dataset.key);
     if (!match) continue;
-    applyIdentifiedState(child, identified.has(match.key), match.name);
+    applyIdentifiedState(child, identified.has(match.itemId), match.name);
   }
 }
 
@@ -385,7 +388,7 @@ function renderResultsList(listEl, emptyEl, countEl, matches, choices, identifie
   countEl.textContent = identifiedCountLabel(matches, identified);
   emptyEl.hidden = matches.length > 0;
 
-  const nextByKey = new Map(matches.map((m) => [m.key, m]));
+  const nextByKey = new Map(matches.map((m) => [m.rowKey, m]));
   const currentEls = new Map();
   for (const child of [...listEl.children]) {
     if (!(child instanceof HTMLElement) || !child.dataset.key) continue;
@@ -431,14 +434,14 @@ function renderResultsList(listEl, emptyEl, countEl, matches, choices, identifie
 
   const ordered = [];
   for (const match of matches) {
-    const existing = currentEls.get(match.key);
+    const existing = currentEls.get(match.rowKey);
     const el = existing ?? buildResultRow(match, choices, identified, onToggleIdentified);
     if (existing) syncResultRow(existing, match, choices, identified);
     ordered.push({
-      key: match.key,
+      key: match.rowKey,
       el,
-      kind: oldTops.has(match.key) ? 'stay' : 'enter',
-      oldTop: oldTops.get(match.key),
+      kind: oldTops.has(match.rowKey) ? 'stay' : 'enter',
+      oldTop: oldTops.get(match.rowKey),
     });
     listEl.appendChild(el);
   }
@@ -756,7 +759,7 @@ export function createView(root) {
         buyReel.paint(catalog, filter, dispatch);
         sellReel.paint(catalog, filter, dispatch);
       }
-      const matches = queryMatches(catalog, filter);
+      const matches = listCandidates(catalog, filter);
       if (options.resultsOnly) {
         paintIdentified(els.list, els.count, matches, identified);
         return;

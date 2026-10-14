@@ -4,6 +4,7 @@ import {
   initialFilter,
   reduceFilter,
   parameterOptions,
+  listCandidates,
   queryMatches,
   priceChips,
   statusChoices,
@@ -389,6 +390,168 @@ test('selecting the current capacity keeps the buy price', () => {
     queryMatches(catalog, state).map((match) => match.name),
     ['ただの壺', 'やりすごしの壺', '識別の壺', '変化の壺', '保存の壺'],
   );
+});
+
+test('listCandidates default 草 is 54 status cards in buy order', () => {
+  const cards = listCandidates(catalog, initialFilter());
+  assert.equal(cards.length, 54);
+  assert.deepEqual(
+    cards.slice(0, 8).map((card) => ({
+      name: card.name,
+      status: card.status,
+      listing: card.listing,
+      buy: card.points[0].buy,
+      sell: card.points[0].sell,
+      itemId: card.itemId,
+      rowKey: card.rowKey,
+    })),
+    [
+      {
+        name: '雑草',
+        status: 'normal',
+        listing: 'status',
+        buy: 10,
+        sell: 4,
+        itemId: '草:雑草',
+        rowKey: '草:雑草\tnormal',
+      },
+      {
+        name: '雑草',
+        status: 'blessed',
+        listing: 'status',
+        buy: 20,
+        sell: 8,
+        itemId: '草:雑草',
+        rowKey: '草:雑草\tblessed',
+      },
+      {
+        name: '薬草',
+        status: 'normal',
+        listing: 'status',
+        buy: 40,
+        sell: 10,
+        itemId: '草:薬草',
+        rowKey: '草:薬草\tnormal',
+      },
+      {
+        name: '毒草',
+        status: 'normal',
+        listing: 'status',
+        buy: 50,
+        sell: 20,
+        itemId: '草:毒草',
+        rowKey: '草:毒草\tnormal',
+      },
+      {
+        name: '暴走の種',
+        status: 'normal',
+        listing: 'status',
+        buy: 50,
+        sell: 20,
+        itemId: '草:暴走の種',
+        rowKey: '草:暴走の種\tnormal',
+      },
+      {
+        name: 'すばやさ草',
+        status: 'normal',
+        listing: 'status',
+        buy: 70,
+        sell: 25,
+        itemId: '草:すばやさ草',
+        rowKey: '草:すばやさ草\tnormal',
+      },
+      {
+        name: 'パワーアップ草',
+        status: 'normal',
+        listing: 'status',
+        buy: 70,
+        sell: 25,
+        itemId: '草:パワーアップ草',
+        rowKey: '草:パワーアップ草\tnormal',
+      },
+      {
+        name: 'めぐすり草',
+        status: 'normal',
+        listing: 'status',
+        buy: 70,
+        sell: 25,
+        itemId: '草:めぐすり草',
+        rowKey: '草:めぐすり草\tnormal',
+      },
+    ],
+  );
+  assert.notEqual(cards[0].rowKey, cards[1].rowKey);
+});
+
+test('listCandidates 草 buy 100 is four priced cards in name order', () => {
+  const filter = reduceFilter(initialFilter(), { type: 'setBuy', buy: 100 });
+  const cards = listCandidates(catalog, filter);
+  assert.deepEqual(
+    cards.map((card) => ({
+      name: card.name,
+      listing: card.listing,
+      rowKey: card.rowKey,
+      itemId: card.itemId,
+      statuses: card.points.map((point) => point.status),
+    })),
+    [
+      {
+        name: 'くねくね草',
+        listing: 'priced',
+        rowKey: '草:くねくね草',
+        itemId: '草:くねくね草',
+        statuses: ['normal'],
+      },
+      {
+        name: '高飛び草',
+        listing: 'priced',
+        rowKey: '草:高飛び草',
+        itemId: '草:高飛び草',
+        statuses: ['normal'],
+      },
+      {
+        name: '毒草',
+        listing: 'priced',
+        rowKey: '草:毒草',
+        itemId: '草:毒草',
+        statuses: ['blessed'],
+      },
+      {
+        name: '暴走の種',
+        listing: 'priced',
+        rowKey: '草:暴走の種',
+        itemId: '草:暴走の種',
+        statuses: ['blessed'],
+      },
+    ],
+  );
+});
+
+test('listCandidates default 腕輪 is 37 normal cards starting at ヘタ投げの腕輪', () => {
+  const filter = reduceFilter(initialFilter(), { type: 'selectCategory', category: '腕輪' });
+  const cards = listCandidates(catalog, filter);
+  assert.equal(cards.length, 37);
+  assert.equal(cards[0].name, 'ヘタ投げの腕輪');
+  assert.equal(cards[0].listing, 'status');
+  assert.equal(cards[0].status, 'normal');
+  assert.equal(cards[0].points[0].buy, 1500);
+  assert.deepEqual(
+    cards.map((card) => card.status),
+    Array.from({ length: 37 }, () => 'normal'),
+  );
+});
+
+test('listCandidates 腕輪 naming blessed and cursed returns 74 cards and no blessed', () => {
+  const base = reduceFilter(initialFilter(), { type: 'selectCategory', category: '腕輪' });
+  const filter = {
+    ...base,
+    includedStatusIds: new Set(['normal', 'blessed', 'cursed']),
+  };
+  const cards = listCandidates(catalog, filter);
+  assert.equal(cards.length, 74);
+  assert.equal(cards.filter((card) => card.status === 'blessed').length, 0);
+  assert.equal(cards.filter((card) => card.status === 'normal').length, 37);
+  assert.equal(cards.filter((card) => card.status === 'cursed').length, 37);
 });
 
 test('priceChips sell list ignores active buy', () => {

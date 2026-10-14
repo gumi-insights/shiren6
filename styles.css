@@ -99,8 +99,7 @@ body {
   line-height: 1.4;
 }
 
-.drawer-toggle,
-.price-side button {
+.drawer-toggle {
   min-height: 44px;
   min-width: 44px;
   border: 2px solid var(--gb-darkest);
@@ -119,16 +118,9 @@ body {
   flex: none;
 }
 
-.drawer-toggle:focus-visible,
-.price-side button:focus-visible {
+.drawer-toggle:focus-visible {
   outline: 2px solid var(--gb-darkest);
   outline-offset: 2px;
-}
-
-.price-side button[aria-pressed='true'] {
-  background: var(--gb-darkest);
-  border-color: var(--gb-darkest);
-  color: var(--gb-lightest);
 }
 
 .layout {
@@ -481,6 +473,61 @@ body {
   gap: 4px;
 }
 
+.price-side-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 112px;
+  height: 44px;
+  min-width: 112px;
+  min-height: 44px;
+  border: 2px solid var(--gb-darkest);
+  border-radius: var(--radius-pill);
+  background: var(--gb-light);
+  color: var(--gb-darkest);
+  font-family: "DotGothic16", "Yu Gothic UI", monospace;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.price-side-switch.is-sell {
+  justify-content: flex-start;
+}
+
+.price-side-switch-text {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.price-side-switch-knob {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 30px;
+  height: 30px;
+  margin-top: -15px;
+  border: 2px solid var(--gb-darkest);
+  border-radius: var(--radius-circle);
+  background: var(--gb-lightest);
+  pointer-events: none;
+  transition: transform 160ms ease;
+}
+
+.price-side-switch.is-sell .price-side-switch-knob {
+  transform: translateX(72px);
+}
+
+.price-side-switch:focus-visible {
+  box-shadow: 0 0 0 3px var(--gb-darkest);
+}
+
 .price-dock[data-price-side='buy'] [data-role='sell-reel'],
 .price-dock[data-price-side='sell'] [data-role='buy-reel'] {
   display: none;
@@ -575,7 +622,9 @@ body {
   justify-content: center;
   flex: 0 0 var(--row);
   width: var(--row);
+  min-width: 0;
   height: var(--row);
+  white-space: nowrap;
   background: transparent;
   color: var(--gb-dark);
   font-family: "DotGothic16", "Yu Gothic UI", monospace;
@@ -937,6 +986,7 @@ body {
   .reel-item {
     flex: none;
     width: 100%;
+    max-width: none;
   }
 
   .reel-cursor {
@@ -966,7 +1016,8 @@ body {
     transition: none !important;
   }
 
-  .status-switch-knob {
+  .status-switch-knob,
+  .price-side-switch-knob {
     transition: none;
   }
 }

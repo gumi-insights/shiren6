@@ -254,7 +254,7 @@ function buildStops(catalog, filter, side) {
     prices.sort((a, b) => a - b);
   }
   return [
-    { value: null, label: '指定なし' },
+    { value: null, label: 'ALL' },
     ...prices.map((value) => ({ value, label: formatPrice(value) })),
   ];
 }
@@ -699,8 +699,10 @@ export function createView(root) {
         </div>
         <div class="price-dock" data-price-side="buy">
           <div class="price-side" data-role="price-side" role="group" aria-label="値段の種類">
-            <button type="button" data-side="buy" aria-pressed="true">買値</button>
-            <button type="button" data-side="sell" aria-pressed="false">売値</button>
+            <button type="button" class="price-side-switch" aria-label="買値。売値に切り替える">
+              <span class="price-side-switch-text">買値</span>
+              <span class="price-side-switch-knob" aria-hidden="true"></span>
+            </button>
           </div>
           <div class="price-row">
             <div class="control-block">
@@ -790,9 +792,11 @@ export function createView(root) {
 
   function paintPriceSide(side) {
     els.priceDock.dataset.priceSide = side;
-    for (const btn of els.priceSide.querySelectorAll('button[data-side]')) {
-      btn.setAttribute('aria-pressed', btn.dataset.side === side ? 'true' : 'false');
-    }
+    const btn = els.priceSide.querySelector('.price-side-switch');
+    const sell = side === 'sell';
+    btn.classList.toggle('is-sell', sell);
+    btn.querySelector('.price-side-switch-text').textContent = sell ? '売値' : '買値';
+    btn.setAttribute('aria-label', sell ? '売値。買値に切り替える' : '買値。売値に切り替える');
   }
 
   function reflectDrawer() {
@@ -880,11 +884,11 @@ export function createView(root) {
   });
   els.drawerScrim.addEventListener('click', () => setDrawer('closed'));
   els.priceSide.addEventListener('click', (event) => {
-    const btn = event.target instanceof Element ? event.target.closest('button[data-side]') : null;
+    const btn = event.target instanceof Element ? event.target.closest('.price-side-switch') : null;
     if (!btn) return;
-    const side = btn.dataset.side;
+    const side = els.priceDock.dataset.priceSide;
     if (side !== 'buy' && side !== 'sell') return;
-    chooseSide(side);
+    chooseSide(side === 'buy' ? 'sell' : 'buy');
   });
   // Capture runs before the reset confirm hides itself, so that confirm still owns Escape.
   document.addEventListener(

@@ -231,15 +231,7 @@ function buildStops(catalog, filter, side) {
   ];
 }
 
-function priceLineChip(category, choice) {
-  const img = document.createElement('img');
-  img.className = 'result-status';
-  img.alt = choice.label;
-  img.src = iconSrc(category, choice.id);
-  return img;
-}
-
-function appendPrices(body, category, points, choices) {
+function appendPrices(body, points, choices) {
   const showStatus = choices.filter((c) => c.included).length > 1;
   if (!showStatus) {
     const prices = document.createElement('div');
@@ -259,7 +251,7 @@ function appendPrices(body, category, points, choices) {
     if (!group) continue;
     const line = document.createElement('div');
     line.className = 'result-prices';
-    line.append(priceLineChip(category, choice), priceBox('buy', group), priceBox('sell', group));
+    line.append(priceBox('buy', group), priceBox('sell', group));
     body.append(line);
   }
 }
@@ -313,7 +305,7 @@ function fillResultBody(body, match, choices) {
     body.append(paramEl);
   }
 
-  appendPrices(body, match.category, match.points, choices);
+  appendPrices(body, match.points, choices);
 }
 
 function syncResultRow(li, match, choices, identified) {
